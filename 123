@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fantasy Wish - 奇幻冒險限定角色抽卡模擬器</title>
+  <meta name="description" content="奇幻冒險主題抽卡模擬器，包含限定卡池、80抽五星硬保底、50/50大小保底、10抽四星保底、角色圖鑑與即時統計數據。">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --gold: #fbbf24;
+      --purple: #c084fc;
+      --blue: #38bdf8;
+      --accent: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: none; outline: none; font-family: inherit; }
+
+    /* Layout */
+    .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem; width: 100%; flex: 1; }
+    header {
+      background: #0f172a;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 800; font-size: 1.125rem; color: #fff; }
+    .brand span.badge { background: rgba(245, 158, 11, 0.2); color: var(--gold); border: 1px solid rgba(245, 158, 11, 0.4); font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; }
+    nav.nav-tabs { display: flex; gap: 0.25rem; background: #090d16; padding: 0.25rem; border-radius: 8px; border: 1px solid var(--border); }
+    .nav-btn {
+      padding: 0.45rem 0.9rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      transition: all 0.2s;
+    }
+    .nav-btn.active { background: var(--card-bg); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+    .nav-btn:hover:not(.active) { color: #fff; }
+
+    /* Common Card & Grid */
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+
+    /* Banner */
+    .banner {
+      background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 60%, #451a03 100%);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 16px;
+      padding: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .banner-title { font-size: 1.75rem; font-weight: 800; color: #fff; margin: 0.5rem 0; }
+    .rate-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(0,0,0,0.4); border: 1px solid var(--border); padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; margin-right: 0.5rem; }
+
+    /* Progress bar */
+    .progress-track { background: #090d16; border-radius: 999px; height: 8px; overflow: hidden; margin: 0.5rem 0; border: 1px solid var(--border); }
+    .progress-bar-gold { height: 100%; background: linear-gradient(90deg, #f59e0b, #fde047); transition: width 0.3s; }
+    .progress-bar-purple { height: 100%; background: linear-gradient(90deg, #9333ea, #e879f9); transition: width 0.3s; }
+
+    /* Buttons */
+    .btn-primary { background: linear-gradient(90deg, #f59e0b, #fbbf24); color: #000; font-weight: 700; padding: 0.75rem 1.5rem; border-radius: 8px; transition: transform 0.1s, opacity 0.2s; }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-secondary { background: #1f2937; color: #f3f4f6; font-weight: 600; padding: 0.75rem 1.25rem; border-radius: 8px; border: 1px solid #374151; }
+    .btn-secondary:hover { background: #374151; }
+    .btn-danger { background: #dc2626; color: #fff; font-weight: 600; padding: 0.45rem 0.85rem; border-radius: 6px; font-size: 0.75rem; }
+
+    /* Character Cards */
+    .char-card {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem;
+      text-align: center;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .char-card.rarity-5 { border-color: rgba(251, 191, 36, 0.6); box-shadow: 0 0 15px rgba(251, 191, 36, 0.15); }
+    .char-card.rarity-4 { border-color: rgba(192, 132, 252, 0.5); box-shadow: 0 0 10px rgba(192, 132, 252, 0.1); }
+    .char-card.rarity-3 { border-color: rgba(56, 189, 248, 0.3); }
+    .char-card.locked { opacity: 0.45; filter: grayscale(1); }
+    .char-avatar-box {
+      width: 72px; height: 72px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      margin: 0.5rem 0; font-size: 1.75rem; font-weight: bold;
+    }
+    .char-avatar-5 { background: linear-gradient(135deg, #b45309, #fde047); color: #000; }
+    .char-avatar-4 { background: linear-gradient(135deg, #581c87, #e879f9); color: #fff; }
+    .char-avatar-3 { background: linear-gradient(135deg, #0369a1, #38bdf8); color: #fff; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    th { text-align: left; padding: 0.65rem 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    td { padding: 0.65rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8);
+      display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem;
+    }
+    .modal-content {
+      background: #0f172a; border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem;
+      max-width: 850px; width: 100%; max-height: 90vh; overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <span>⚔️ Fantasy Wish</span>
+        <span class="badge">限定角色祈願</span>
+      </div>
+
+      <nav class="nav-tabs">
+        <button id="tab-wish-btn" class="nav-btn active" onclick="switchTab('wish')">抽卡祈願</button>
+        <button id="tab-archive-btn" class="nav-btn" onclick="switchTab('archive')">角色圖鑑</button>
+        <button id="tab-history-btn" class="nav-btn" onclick="switchTab('history')">紀錄統計</button>
+      </nav>
+
+      <button onclick="promptReset()" class="btn-danger">重置資料</button>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    
+    <!-- 1. Wish Tab Content -->
+    <section id="section-wish">
+      <div class="banner">
+        <div>
+          <span style="font-size:0.75rem; font-weight:bold; color:var(--gold); letter-spacing:1px;">✦ EVENT WISH ✦</span>
+          <h1 class="banner-title">晨曦的榮耀 · 限定角色祈願</h1>
+          <p style="color:#cbd5e1; font-size:0.875rem; max-width:550px;">
+            限定五星角色【<strong style="color:var(--gold)">晨曦聖劍 · 艾莉西亞</strong>】祈願機率大幅提升！破曉之刃斬斷黑夜。
+          </p>
+          <div style="margin-top:1rem;">
+            <div class="rate-badge">五星機率: <strong style="color:var(--gold);">0.8%</strong></div>
+            <div class="rate-badge">四星機率: <strong style="color:var(--purple);">8.0%</strong></div>
+            <div class="rate-badge">三星機率: <strong style="color:var(--blue);">91.2%</strong></div>
+          </div>
+        </div>
+
+        <div class="char-card rarity-5" style="width:220px; background:#18181b;">
+          <span style="font-size:0.65rem; background:var(--gold); color:#000; font-weight:bold; padding:2px 6px; border-radius:4px; align-self:flex-end;">當期限定 UP</span>
+          <div class="char-avatar-box char-avatar-5">⚔️</div>
+          <div style="font-size:0.75rem; color:var(--gold); font-weight:bold;">★★★★★</div>
+          <div style="font-weight:bold; font-size:0.95rem; margin-top:2px;">晨曦聖劍 · 艾莉西亞</div>
+          <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">聖光騎士 · 光屬性</div>
+        </div>
+      </div>
+
+      <!-- Pity Cockpit -->
+      <div class="grid-3" style="margin-bottom: 1.5rem;">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+            <span>五星硬保底計數</span>
+            <strong id="pity5-text" style="color:var(--gold); font-family:monospace;">0 / 80 抽</strong>
+          </div>
+          <div class="progress-track"><div id="pity5-bar" class="progress-bar-gold" style="width:0%;"></div></div>
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+            <span>剩餘保底抽數:</span>
+            <strong id="pity5-remain" style="color:var(--gold);">80 抽</strong>
+          </div>
+          <div style="font-size:0.7rem; color:#64748b; margin-top:0.25rem;">連續 79 抽未出五星，第 80 抽必定獲得五星。</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+            <span>四星硬保底計數</span>
+            <strong id="pity4-text" style="color:var(--purple); font-family:monospace;">0 / 10 抽</strong>
+          </div>
+          <div class="progress-track"><div id="pity4-bar" class="progress-bar-purple" style="width:0%;"></div></div>
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+            <span>距離四星保底:</span>
+            <strong id="pity4-remain" style="color:var(--purple);">10 抽</strong>
+          </div>
+          <div style="font-size:0.7rem; color:#64748b; margin-top:0.25rem;">連續 9 抽無四星或五星，第 10 抽必定出四星或以上。</div>
+        </div>
+
+        <div class="card" id="guaranteed-box">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted);">
+            <span>大小保底狀態</span>
+            <span id="guaranteed-badge" style="font-size:0.7rem; padding:1px 5px; border-radius:4px; background:#1e293b;">一般 50/50</span>
+          </div>
+          <div style="font-weight:bold; font-size:0.875rem; margin:0.6rem 0;" id="guaranteed-desc">
+            下一次五星為 50% 限定 / 50% 常駐
+          </div>
+          <div style="font-size:0.7rem; color:#64748b;">
+            若抽出常駐五星將啟動大保底，下一次五星必為限定角色。
+          </div>
+        </div>
+      </div>
+
+      <!-- Gacha Action Controls -->
+      <div class="card" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.5rem;">
+        <label style="font-size:0.8125rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+          <input type="checkbox" id="skip-anim-cb"> 跳過翻牌動畫
+        </label>
+        <div style="display:flex; gap:0.75rem;">
+          <button onclick="doPull(1)" class="btn-secondary">祈願 1 次 (單抽)</button>
+          <button onclick="doPull(10)" class="btn-primary">祈願 10 次 (十連抽)</button>
+        </div>
+      </div>
+
+      <!-- Recent Wish Results Display -->
+      <div class="card">
+        <h3 style="font-size:0.9rem; font-weight:bold; margin-bottom:0.75rem;">最近一次抽卡結果</h3>
+        <div id="recent-results-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:0.75rem;">
+          <div style="color:var(--text-muted); font-size:0.8125rem; grid-column: 1/-1; text-align:center; padding:2rem 0;">
+            尚未進行祈願，點擊上方按鈕開始召喚！
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Archive Tab Content -->
+    <section id="section-archive" style="display:none;">
+      <div class="card" style="margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="font-size:1.125rem; font-weight:bold;">角色冒險者圖鑑</h2>
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">點選下方按鈕可依稀有度篩選角色，未獲得者以灰階標示。</p>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-size:0.75rem; color:var(--text-muted);">已解鎖進度: </span>
+          <strong id="archive-count" style="color:var(--gold); font-family:monospace; font-size:1rem;">0 / 12</strong>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+        <button class="nav-btn active" onclick="filterArchive('all', this)">全部 (12)</button>
+        <button class="nav-btn" onclick="filterArchive(5, this)">五星 (3)</button>
+        <button class="nav-btn" onclick="filterArchive(4, this)">四星 (4)</button>
+        <button class="nav-btn" onclick="filterArchive(3, this)">三星 (5)</button>
+      </div>
+
+      <div id="archive-grid" class="grid-4"></div>
+    </section>
+
+    <!-- 3. History Tab Content -->
+    <section id="section-history" style="display:none;">
+      <div class="grid-4" style="margin-bottom:1.5rem;">
+        <div class="card">
+          <div style="font-size:0.75rem; color:var(--text-muted);">累積總抽數</div>
+          <div id="stat-total" style="font-size:1.75rem; font-weight:bold; font-family:monospace; margin-top:0.25rem;">0</div>
+        </div>
+        <div class="card">
+          <div style="font-size:0.75rem; color:var(--text-muted);">五星數量 / 實際出率</div>
+          <div id="stat-5star" style="font-size:1.75rem; font-weight:bold; font-family:monospace; color:var(--gold); margin-top:0.25rem;">0 (0.00%)</div>
+        </div>
+        <div class="card">
+          <div style="font-size:0.75rem; color:var(--text-muted);">累積限定五星</div>
+          <div id="stat-limited" style="font-size:1.75rem; font-weight:bold; font-family:monospace; color:var(--gold); margin-top:0.25rem;">0 名</div>
+        </div>
+        <div class="card">
+          <div style="font-size:0.75rem; color:var(--text-muted);">保底狀態</div>
+          <div id="stat-pity-info" style="font-size:0.875rem; font-weight:bold; margin-top:0.5rem;">0/80 抽 · 一般 50/50</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:0.9rem; font-weight:bold; margin-bottom:1rem;">完整歷史抽卡記錄 (最新優先)</h3>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>序號</th>
+                <th>角色名稱</th>
+                <th>稀有度</th>
+                <th>類型</th>
+                <th>當期限定</th>
+                <th>抽前五星計數</th>
+                <th>判定依據</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody">
+              <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">尚無紀錄</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Reveal Modal -->
+  <div id="reveal-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+        <h3 style="font-size:1.125rem; font-weight:bold; color:var(--gold);">✦ 祈願結算 ✦</h3>
+        <button onclick="closeRevealModal()" style="background:transparent; color:#fff; font-size:1.25rem;">✕</button>
+      </div>
+      <div id="modal-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:0.75rem; margin-bottom:1.5rem;"></div>
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+        <button onclick="doPull(1); closeRevealModal();" class="btn-secondary">再次單抽</button>
+        <button onclick="doPull(10); closeRevealModal();" class="btn-primary">再次十連</button>
+        <button onclick="closeRevealModal()" class="btn-secondary">確認</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 12 Canonical Characters Specification
+    const CHARACTERS = [
+      { id: 'char_5_lim_1', name: '艾莉西亞', title: '晨曦聖劍', rarity: 5, type: 'limited', role: '聖光騎士', icon: '⚔️', obtainedCount: 0 },
+      { id: 'char_5_std_1', name: '伊格尼斯', title: '熾炎魔導士', rarity: 5, type: 'standard', role: '烈焰法師', icon: '🔥', obtainedCount: 0 },
+      { id: 'char_5_std_2', name: '賽弗', title: '霜夜暗影', rarity: 5, type: 'standard', role: '冰刃刺客', icon: '🗡️', obtainedCount: 0 },
+      { id: 'char_4_std_1', name: '席琳', title: '疾風遊俠', rarity: 4, type: 'standard', role: '風靈巡林', icon: '🏹', obtainedCount: 0 },
+      { id: 'char_4_std_2', name: '葛倫', title: '磐石守護者', rarity: 4, type: 'standard', role: '重裝巨盾', icon: '🛡️', obtainedCount: 0 },
+      { id: 'char_4_std_3', name: '蕾娜', title: '蒼潮詠者', rarity: 4, type: 'standard', role: '水流奏者', icon: '🌊', obtainedCount: 0 },
+      { id: 'char_4_std_4', name: '洛克', title: '雷光機工士', rarity: 4, type: 'standard', role: '雷電工匠', icon: '⚡', obtainedCount: 0 },
+      { id: 'char_3_std_1', name: '托比', title: '見習冒險者', rarity: 3, type: 'standard', role: '熱血新兵', icon: '🧭', obtainedCount: 0 },
+      { id: 'char_3_std_2', name: '菲', title: '森林斥候', rarity: 3, type: 'standard', role: '偵察斥候', icon: '🍃', obtainedCount: 0 },
+      { id: 'char_3_std_3', name: '瓦倫', title: '傭兵長槍手', rarity: 3, type: 'standard', role: '長槍鋒刃', icon: '🔱', obtainedCount: 0 },
+      { id: 'char_3_std_4', name: '妮雅', title: '學徒法師', rarity: 3, type: 'standard', role: '法術見習', icon: '📖', obtainedCount: 0 },
+      { id: 'char_3_std_5', name: '漢克', title: '鐵匠學徒', rarity: 3, type: 'standard', role: '鍛造鐵錘', icon: '🔨', obtainedCount: 0 }
+    ];
+
+    let state = {
+      totalPulls: 0,
+      pity5Count: 0,
+      pity4Count: 0,
+      isGuaranteed: false,
+      history: [],
+      lastPulls: []
+    };
+
+    let currentArchiveFilter = 'all';
+
+    // Single Pull Algorithm adhering exactly to specification
+    function executeSinglePull() {
+      const pullNum = state.totalPulls + 1;
+      const pity5Before = state.pity5Count;
+      const pity4Before = state.pity4Count;
+      const wasGuaranteed = state.isGuaranteed;
+
+      let rarity = 3;
+      let reason = '3星基礎機率 (91.2%)';
+
+      // 1. 5-Star Hard Pity at 79 (80th pull)
+      if (pity5Before >= 79) {
+        rarity = 5;
+        reason = '80 抽五星硬保底';
+      }
+      // 2. 4-Star Hard Pity at 9 (10th pull)
+      else if (pity4Before >= 9) {
+        if (Math.random() < 0.8 / 8.8) {
+          rarity = 5;
+          reason = '10 抽四星保底 (轉出五星)';
+        } else {
+          rarity = 4;
+          reason = '10 抽四星硬保底';
+        }
+      }
+      // 3. Base Rates: 0.8% 5★, 8.0% 4★, 91.2% 3★
+      else {
+        const r = Math.random() * 100;
+        if (r < 0.8) {
+          rarity = 5;
+          reason = '0.8% 基礎機率命中';
+        } else if (r < 8.8) {
+          rarity = 4;
+          reason = '8.0% 基礎機率命中';
+        } else {
+          rarity = 3;
+          reason = '91.2% 基礎機率';
+        }
+      }
+
+      // Pick Character
+      let char;
+      let won5050 = undefined;
+
+      if (rarity === 5) {
+        const lim = CHARACTERS.find(c => c.id === 'char_5_lim_1');
+        const stds = CHARACTERS.filter(c => c.rarity === 5 && c.type === 'standard');
+
+        if (wasGuaranteed) {
+          char = lim;
+          state.isGuaranteed = false;
+          won5050 = true;
+          reason += ' [大保底命中限定]';
+        } else {
+          if (Math.random() < 0.5) {
+            char = lim;
+            state.isGuaranteed = false;
+            won5050 = true;
+            reason += ' [50/50 抽中限定]';
+          } else {
+            char = stds[Math.floor(Math.random() * stds.length)];
+            state.isGuaranteed = true;
+            won5050 = false;
+            reason += ' [50/50 歪常駐 -> 啟動大保底]';
+          }
+        }
+        state.pity5Count = 0;
+        state.pity4Count = 0;
+      } else if (rarity === 4) {
+        const pool = CHARACTERS.filter(c => c.rarity === 4);
+        char = pool[Math.floor(Math.random() * pool.length)];
+        state.pity5Count = pity5Before + 1;
+        state.pity4Count = 0;
+      } else {
+        const pool = CHARACTERS.filter(c => c.rarity === 3);
+        char = pool[Math.floor(Math.random() * pool.length)];
+        state.pity5Count = pity5Before + 1;
+        state.pity4Count = pity4Before + 1;
+      }
+
+      char.obtainedCount += 1;
+      state.totalPulls = pullNum;
+
+      const record = {
+        pullNumber: pullNum,
+        character: char,
+        pity5Before: pity5Before,
+        reason: reason,
+        isLimited: char.type === 'limited'
+      };
+
+      state.history.unshift(record);
+      return record;
+    }
+
+    function doPull(count) {
+      const records = [];
+      for (let i = 0; i < count; i++) {
+        records.push(executeSinglePull());
+      }
+      state.lastPulls = records;
+      updateUI();
+
+      const skip = document.getElementById('skip-anim-cb').checked;
+      if (!skip) {
+        openRevealModal(records);
+      }
+    }
+
+    function openRevealModal(records) {
+      const modal = document.getElementById('reveal-modal');
+      const grid = document.getElementById('modal-cards-grid');
+      grid.innerHTML = records.map(r => renderCardHtml(r.character, true)).join('');
+      modal.style.display = 'flex';
+    }
+
+    function closeRevealModal() {
+      document.getElementById('reveal-modal').style.display = 'none';
+    }
+
+    function renderCardHtml(char, showDup) {
+      const isUnlocked = char.obtainedCount > 0;
+      const rarityClass = 'rarity-' + char.rarity;
+      const avatarClass = 'char-avatar-' + char.rarity;
+      const stars = '★'.repeat(char.rarity);
+
+      return `
+        <div class="char-card ${rarityClass} ${isUnlocked ? '' : 'locked'}">
+          <div style="width:100%; display:flex; justify-content:space-between; font-size:0.65rem;">
+            <span style="color:${char.type==='limited'?'var(--gold)':'#94a3b8'};">${char.type==='limited'?'限定 UP':'常駐'}</span>
+            <span style="color:var(--gold); font-family:monospace;">${stars}</span>
+          </div>
+          <div class="char-avatar-box ${avatarClass}">${char.icon}</div>
+          <div style="font-weight:bold; font-size:0.85rem; margin-top:2px;">${char.title} · ${char.name}</div>
+          <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">${char.role}</div>
+          ${showDup && isUnlocked ? `<div style="font-size:0.65rem; color:var(--gold); margin-top:4px; font-weight:bold;">已獲得 ×${char.obtainedCount}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function updateUI() {
+      // Pity
+      document.getElementById('pity5-text').innerText = state.pity5Count + ' / 80 抽';
+      document.getElementById('pity5-remain').innerText = (80 - state.pity5Count) + ' 抽';
+      document.getElementById('pity5-bar').style.width = ((state.pity5Count / 80) * 100) + '%';
+
+      document.getElementById('pity4-text').innerText = state.pity4Count + ' / 10 抽';
+      document.getElementById('pity4-remain').innerText = (10 - state.pity4Count) + ' 抽';
+      document.getElementById('pity4-bar').style.width = ((state.pity4Count / 10) * 100) + '%';
+
+      // Guaranteed
+      const gBadge = document.getElementById('guaranteed-badge');
+      const gDesc = document.getElementById('guaranteed-desc');
+      if (state.isGuaranteed) {
+        gBadge.innerText = '大保底生效中';
+        gBadge.style.background = 'rgba(245, 158, 11, 0.3)';
+        gBadge.style.color = 'var(--gold)';
+        gDesc.innerText = '下一次五星必定為【限定】艾莉西亞！';
+        gDesc.style.color = 'var(--gold)';
+      } else {
+        gBadge.innerText = '一般 50/50';
+        gBadge.style.background = '#1e293b';
+        gBadge.style.color = '#94a3b8';
+        gDesc.innerText = '下一次五星為 50% 限定 / 50% 常駐';
+        gDesc.style.color = '#fff';
+      }
+
+      // Recent Results
+      const recentContainer = document.getElementById('recent-results-container');
+      if (state.lastPulls.length > 0) {
+        recentContainer.innerHTML = state.lastPulls.map(r => renderCardHtml(r.character, true)).join('');
+      } else {
+        recentContainer.innerHTML = '<div style="color:var(--text-muted); font-size:0.8125rem; grid-column: 1/-1; text-align:center; padding:2rem 0;">尚未進行祈願，點擊上方按鈕開始召喚！</div>';
+      }
+
+      // Stats
+      const count5 = state.history.filter(r => r.character.rarity === 5).length;
+      const countLim = state.history.filter(r => r.character.id === 'char_5_lim_1').length;
+      const rate5 = state.totalPulls > 0 ? ((count5 / state.totalPulls) * 100).toFixed(2) : '0.00';
+
+      document.getElementById('stat-total').innerText = state.totalPulls + ' 抽';
+      document.getElementById('stat-5star').innerText = count5 + ' (' + rate5 + '%)';
+      document.getElementById('stat-limited').innerText = countLim + ' 名';
+      document.getElementById('stat-pity-info').innerText = state.pity5Count + '/80 抽 · ' + (state.isGuaranteed ? '大保底生效' : '一般 50/50');
+
+      // Archive
+      const unlocked = CHARACTERS.filter(c => c.obtainedCount > 0).length;
+      document.getElementById('archive-count').innerText = unlocked + ' / 12';
+      renderArchive();
+
+      // History Table
+      const tbody = document.getElementById('history-tbody');
+      if (state.history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:2rem;">尚無紀錄</td></tr>';
+      } else {
+        tbody.innerHTML = state.history.map(r => `
+          <tr style="${r.character.rarity===5 ? 'background:rgba(245,158,11,0.1);' : r.character.rarity===4 ? 'background:rgba(192,132,252,0.05);' : ''}">
+            <td style="color:#94a3b8;">#${r.pullNumber}</td>
+            <td style="font-weight:bold; color:#fff;">${r.character.title} · ${r.character.name}</td>
+            <td style="color:${r.character.rarity===5?'var(--gold)':r.character.rarity===4?'var(--purple)':'var(--blue)'}; font-weight:bold;">
+              ${'★'.repeat(r.character.rarity)}
+            </td>
+            <td>${r.character.type==='limited'?'限定':'常駐'}</td>
+            <td>${r.character.type==='limited'?'<strong style="color:var(--gold);">是</strong>':'否'}</td>
+            <td style="font-family:monospace;">${r.pity5Before} / 80</td>
+            <td style="color:#cbd5e1;">${r.reason}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function renderArchive() {
+      const grid = document.getElementById('archive-grid');
+      const list = CHARACTERS.filter(c => currentArchiveFilter === 'all' || c.rarity === Number(currentArchiveFilter));
+      grid.innerHTML = list.map(c => renderCardHtml(c, true)).join('');
+    }
+
+    function filterArchive(val, btn) {
+      currentArchiveFilter = val;
+      document.querySelectorAll('#section-archive .nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderArchive();
+    }
+
+    function switchTab(tab) {
+      document.getElementById('section-wish').style.display = tab === 'wish' ? 'block' : 'none';
+      document.getElementById('section-archive').style.display = tab === 'archive' ? 'block' : 'none';
+      document.getElementById('section-history').style.display = tab === 'history' ? 'block' : 'none';
+
+      document.getElementById('tab-wish-btn').classList.toggle('active', tab === 'wish');
+      document.getElementById('tab-archive-btn').classList.toggle('active', tab === 'archive');
+      document.getElementById('tab-history-btn').classList.toggle('active', tab === 'history');
+    }
+
+    function promptReset() {
+      if (confirm('【二次確認】確定要重置所有抽卡資料嗎？\n\n重置後：總抽數歸零、五星與四星保底重置、大保底關閉、圖鑑次數與歷史紀錄全部清空。')) {
+        state.totalPulls = 0;
+        state.pity5Count = 0;
+        state.pity4Count = 0;
+        state.isGuaranteed = false;
+        state.history = [];
+        state.lastPulls = [];
+        CHARACTERS.forEach(c => c.obtainedCount = 0);
+        updateUI();
+        alert('資料已成功重置！');
+      }
+    }
+
+    // Initialize UI on startup
+    updateUI();
+  </script>
+</body>
+</html>
